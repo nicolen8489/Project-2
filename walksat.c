@@ -42,6 +42,7 @@
 #define NT 0
 
 
+
 /* Define BIGINT to be the type used for the "cutoff" variable.
    Under gcc "long long int" gives a 64 bit integer.
    Program will still function using a 32-bit value, but it
@@ -118,6 +119,8 @@ long ticks_per_second;
 /************************************/
 /* Internal constants               */
 /************************************/
+// nicolen
+int firstRun = 1;
 
 enum heuristics { RANDOM, BEST, TABU, NOVELTY, RNOVELTY, NOVELTY_PLUS, 
 RNOVELTY_PLUS};
@@ -442,10 +445,10 @@ int runWalksat(int argc, char * argv[])
 #endif
     parse_parameters(argc, argv);
     srandom(seed);
-    //print_parameters(argc, argv);
+    print_parameters(argc, argv);
     initprob();
     initialize_statistics();
-    print_statistics_header();
+//    print_statistics_header();
     signal(SIGINT, handle_interrupt);
     abort_flag = FALSE;
     (void) elapsed_seconds();
@@ -467,7 +470,7 @@ int runWalksat(int argc, char * argv[])
             flipatom(toflip);
 	    update_statistics_end_flip();
 	}
-	update_and_print_statistics_end_try();
+	//update_and_print_statistics_end_try();
     }
     expertime = elapsed_seconds();
     print_statistics_final();
@@ -479,7 +482,6 @@ void parse_parameters(int argc,char *argv[])
 {
     int i;
     int temp;
-
     cnfStream = stdin;
     for (i=1;i < argc;i++)
     {
@@ -555,7 +557,6 @@ void parse_parameters(int argc,char *argv[])
             while(val != NULL) {
               int lit = atoi(val);
               partialDel[j++]=lit;
-              printf("%d\n", lit);
               val = strtok(NULL, ":");
             }
  
@@ -1272,12 +1273,14 @@ void initprob(void)
       }
 
 #ifdef DYNAMIC
+    if(firstRun) {
     clause = (int **) malloc(sizeof(int *)*(numclause+1));
     size = (int *) malloc(sizeof(int)*(numclause+1));
     false = (int *) malloc(sizeof(int)*(numclause+1));
     lowfalse = (int *) malloc(sizeof(int)*(numclause+1));
     wherefalse = (int *) malloc(sizeof(int)*(numclause+1));
     numtruelit = (int *) malloc(sizeof(int)*(numclause+1));
+    }
 #else
     if(numclause > MAXCLAUSE)                     
       {                                      
@@ -1292,15 +1295,16 @@ void initprob(void)
     for(i = 0;i < numclause;i++)
       {
 	  size[i] = -1;
-	  if (freestore < MAXLENGTH)
+	  if (freestore < MAXLENGTH && firstRun)
 	    {
+		int temp = malloc( sizeof(int) * STOREBLOCK );
 		storeptr = (int *) malloc( sizeof(int) * STOREBLOCK );
 		freestore = STOREBLOCK;
-		fprintf(stderr,"allocating memory...\n");
+		fprintf(stderr,"allocating memory (1)...\n");
 	    }
 	  clause[i] = storeptr;
 	  do
-	    {
+	    { 
 		size[i]++;
 		if(size[i] > MAXLENGTH)
 		  {
@@ -1330,11 +1334,11 @@ void initprob(void)
 
     for(i = 0;i < 2*MAXATOM+1;i++)
       {
-	  if (freestore < numoccurence[i])
+	  if (freestore < numoccurence[i] && firstRun)
 	    {
 		storeptr = (int *) malloc( sizeof(int) * STOREBLOCK );
 		freestore = STOREBLOCK;
-		fprintf(stderr,"allocating memory...\n");
+		fprintf(stderr,"allocating memory(2)...\n");
 	    }
 	  occurence[i] = storeptr;
 	  freestore -= numoccurence[i];
@@ -1350,6 +1354,9 @@ void initprob(void)
 		  [numoccurence[clause[i][j]+MAXATOM]] = i;
 		numoccurence[clause[i][j]+MAXATOM]++;
 	    }
+      }
+      if(firstRun) {
+        firstRun = 0;
       }
 }
 
@@ -2253,16 +2260,21 @@ JNIEXPORT jboolean JNICALL Java_HybridVarOrderHeap_runWalkSat
   }
   (*env)->ReleaseIntArrayElements(env, partial, d, 0);*/
   
-  char * argv[3];
+  char * argv[7];
   argv[0] = "walksat";
-  argv[1] = "-sol";
-  argv[2] = "-assignDel";
-  argv[3] = partialFile;
-  argv[4] = cnfFile;
-  argv[5] = NULL;
+  argv[1] = "-numsol";
+  argv[2] = "1";
+//  argv[1] = "-sol";
+  argv[3] = "-assignDel";
+  argv[4] = partialFile;
+  argv[5] = cnfFile;
+  argv[6] = NULL;
+
+  printf("%s\n",partialFile);
+  printf("%s\n",cnfFile);
   
 //  runWalksat(2, argv, pa, numPartialLits);
-  runWalksat(5, argv);
+  runWalksat(6, argv);
   free(cnfFile);
   free(partialFile);
 //  free(pa);
